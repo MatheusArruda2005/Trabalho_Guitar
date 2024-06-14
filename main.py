@@ -1,4 +1,4 @@
-import pygame
+import  pygame
 import os  # Sistema de operação do computador para ajudar a puxar imagens
 import random
 
@@ -6,7 +6,7 @@ LARGURA, ALTURA = 900, 500
 LARGURA_GUITARRA = 450
 WIN = pygame.display.set_mode((LARGURA, ALTURA))
 pygame.display.set_caption("Mini-GuitarHero")
-FPS = 60
+FPS = 120
 
 # Inicializar o Pygame e o módulo de fontes
 pygame.init()
@@ -20,7 +20,12 @@ BRANCO = (255, 255, 255)
 BLACK = (0, 0, 0)
 VELOCIDADE_NOTA = 5
 DURACAO_CRIACAO_NOTAS = 100000  # 100 segundos em milissegundos
-INTERVALO_CRIACAO_NOTAS = 2000  # 2 segundos em milissegundos
+INTERVALO_CRIACAO_NOTAS = 500  # 2 segundos em milissegundos
+
+  #====== estrutura para tocar música ======#
+pygame.mixer.music.load('music2.mp3')
+pygame.mixer.music.play()
+pygame.event.wait()     
 
 class NotaMusical:
     def __init__(self, x, y):
@@ -28,7 +33,7 @@ class NotaMusical:
         self.y = y
         self.image = NOTA_MUSICAL_AJUSTADA
 
-    def desenhar(self, WIN):
+    def desenhar(self, win):
         WIN.blit(self.image, (self.x, self.y))
 
     def mover(self):
@@ -54,14 +59,24 @@ def desenhar_texto(texto, x, y, tamanho):
     superficie_texto = fonte.render(texto, True, BRANCO)
     WIN.blit(superficie_texto, (x, y))
 
-def desenhar(notas, contador, erros):
+def desenhar(notas, contador):
     WIN.fill((BLACK))  # Preenchendo a tela
     desenhar_linhas_divisao()
     for nota in notas:
         nota.desenhar(WIN)
-    desenhar_texto(f"Acertos: {contador}", 50, 100, 25)  # Desenhar o texto após desenhar as notas e linhas
-    desenhar_texto(f"Erros: {erros}", 50, 150, 25)
-    pygame.display.update()  # Atualizando a tela
+    desenhar_texto(f"Contador: {contador}", 50, 100, 25)  # Desenhar o texto após desenhar as notas e linhas
+    pygame.display.update()   # Atualizando a tela
+
+def teclas(keys, notas, contador):
+    if keys[pygame.K_a]:
+        contador = verificar_colisao(notas, contador, 0)
+    if keys[pygame.K_s]:
+        contador = verificar_colisao(notas, contador, 1)
+    if keys[pygame.K_d]:
+        contador = verificar_colisao(notas, contador, 2)
+    if keys[pygame.K_f]:
+        contador = verificar_colisao(notas, contador, 3)
+    return contador
 
 def verificar_colisao(notas, contador, quadrante):
     # Definir o retângulo do quadrante
@@ -70,24 +85,21 @@ def verificar_colisao(notas, contador, quadrante):
     quadrante_x_min = deslocamento_x + quadrante * um_quarto_largura
     quadrante_x_max = quadrante_x_min + um_quarto_largura
     quadrante_y_min = ALTURA // 2 + 100
-    quadrante_y_max = quadrante_y_min + 150  # Altura da imagem da nota musical
-    erro = 1  # Assume que é um erro por padrão
+    quadrante_y_max = quadrante_y_min + 70  # Altura da imagem da nota musical
 
-    # Verificar se alguma nota está dentro do quadrante
+        # Verificar se alguma nota está dentro do quadrante
     for nota in notas:
         if (quadrante_x_min <= nota.x <= quadrante_x_max and
             quadrante_y_min <= nota.y + NOTA_MUSICAL_AJUSTADA.get_height() // 2 <= quadrante_y_max):
             contador += 1
             notas.remove(nota)
-            erro = 0  # Não é um erro se a nota for acertada
             break
-    return contador, erro
+    return contador
 
 def main():
     clock = pygame.time.Clock()
     run = True
     contador = 0
-    erros = 0
 
     # Lista para armazenar as notas musicais
     notas = []
@@ -106,21 +118,6 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_a:
-                    contador, erro = verificar_colisao(notas, contador, 0)
-                    erros += erro
-                elif event.key == pygame.K_s:
-                    contador, erro = verificar_colisao(notas, contador, 1)
-                    erros += erro
-                elif event.key == pygame.K_d:
-                    contador, erro = verificar_colisao(notas, contador, 2)
-                    erros += erro
-                elif event.key == pygame.K_f:
-                    contador, erro = verificar_colisao(notas, contador, 3)
-                    erros += erro
-                else:
-                    erros += 1
 
         if tempo_decorrido < DURACAO_CRIACAO_NOTAS and tempo_atual - ultimo_tempo_criacao >= INTERVALO_CRIACAO_NOTAS:
             # Criar nova nota musical a cada 2 segundos durante os primeiros 100 segundos
@@ -133,7 +130,10 @@ def main():
         for nota in notas:
             nota.mover()
 
-        desenhar(notas, contador, erros)  # Chamando desenhar no final para garantir que o texto não seja sobrescrito
+        keys = pygame.key.get_pressed()
+        contador = teclas(keys, notas, contador)
+        
+        desenhar(notas, contador)  # Chamando desenhar no final para garantir que o texto não seja sobrescrito
 
     pygame.quit()
 
